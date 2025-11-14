@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # ✅ NEW
+from flask_cors import CORS
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # import helpers from your existing file
 from matchfit_app import (
@@ -11,7 +12,6 @@ from matchfit_app import (
 )
 
 app = Flask(__name__)
-# ✅ allow your frontend (Bolt / whatever) to call this API
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 
@@ -49,24 +49,47 @@ def match_experts():
     experts = data["experts"]  # [{ "id": number, "overview": string }]
 
     model = "gpt-5-mini"
-    results = []
 
-    for ex in experts:
-        m = _call_with_fallback(
-            lambda **k: call_llm_match(client_overview, ex["overview"], **k),
-            model,
-        )
-        results.append({
-            "expert_id": ex["id"],
-            "match_score": m["match"],
-            "reason1": m["reasons"][0],
-            "reason2": m["reasons"][1],
-        })
+    # ---- concurrent scoring to avoid super-long requests ----
+    def score_one(ex):
+        try:
+            m = _call_with_fallback(
+                lambda **k: call_llm_match(client_overview, ex["overview"], **k),
+                model,
+            )
+            return {
+                "expert_id": ex["id"],
+                "match_score": m["match"],
+                "reason1": m["reasons"][0],
+                "reason2": m["reasons"][1],
+            }
+        except Exception as e:
+            # Don't kill the whole request if one expert blows up
+            return {
+                "expert_id": ex["id"],
+                "match_score": 0,
+                "reason1": f"Error scoring expert: {e}",
+                "reason2": "",
+            }
+
+    results = []
+    max_workers = min(8, max(1, len(experts)))  # safe cap
+
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(score_one, ex) for ex in experts]
+            for fut in as_completed(futures):
+                results.append(fut.result())
+    except Exception as e:
+        # If something really bad happens, return a clean 500 JSON
+        return jsonify({"error": f"Failed to score experts: {e}"}), 500
+
+    # sort by score desc just in case
+    results.sort(key=lambda r: r["match_score"], reverse=True)
 
     return jsonify({"matches": results})
 
 
-# Optional small healthcheck to debug quickly
 @app.get("/")
 def health():
     return jsonify({"status": "ok"})
