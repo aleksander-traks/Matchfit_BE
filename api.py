@@ -1,5 +1,6 @@
 import os
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # ✅ NEW
 
 # import helpers from your existing file
 from matchfit_app import (
@@ -10,6 +11,9 @@ from matchfit_app import (
 )
 
 app = Flask(__name__)
+# ✅ allow your frontend (Bolt / whatever) to call this API
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 
 @app.post("/generate-overview")
 def generate_overview():
@@ -60,6 +64,12 @@ def match_experts():
         })
 
     return jsonify({"matches": results})
+
+
+# Optional small healthcheck to debug quickly
+@app.get("/")
+def health():
+    return jsonify({"status": "ok"})
 
 
 if __name__ == "__main__":
