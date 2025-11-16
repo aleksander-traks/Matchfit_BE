@@ -140,14 +140,14 @@ def _extract_text_from_responses(resp) -> str:
 
 def _responses_create(client: OpenAI, model: str, messages: list):
     kwargs = {"model": model, "input": messages}
-    if not model.startswith("gpt-5"):
+    if not model.startswith("gpt-5-mini"):
         kwargs["temperature"] = 0
     return client.responses.create(**kwargs)
 
 def _sleep_with_jitter(base: float, attempt: int):
     time.sleep((base ** attempt) + random.uniform(0, 0.25))
 
-FALLBACK_CHAIN = ["gpt-5-mini", "gpt-4o-mini", "gpt-4o"]
+FALLBACK_CHAIN = ["gpt-4o-mini", "gpt-4o"]
 
 def _call_with_fallback(call_fn, primary_model: str, *args, **kwargs):
     """
