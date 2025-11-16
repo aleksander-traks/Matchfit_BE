@@ -22,7 +22,7 @@ EXECUTOR = ThreadPoolExecutor(max_workers=MAX_MATCH_WORKERS)
 # optional cap on experts per request (tunable via env, high by default)
 MAX_EXPERTS_PER_REQUEST = int(os.getenv("MATCHFIT_MAX_EXPERTS", "1000"))
 
-DEFAULT_MODEL = os.getenv("MATCHFIT_MODEL", "gpt-5-mini")
+DEFAULT_MODEL = os.getenv("MATCHFIT_MODEL", "gpt-5-nano")
 
 
 @app.post("/generate-overview")

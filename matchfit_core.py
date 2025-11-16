@@ -140,7 +140,7 @@ def _extract_text_from_responses(resp) -> str:
 
 def _responses_create(client: OpenAI, model: str, messages: list):
     kwargs = {"model": model, "input": messages}
-    if not model.startswith("gpt-5-mini"):
+    if not model.startswith("gpt-5-nano"):
         kwargs["temperature"] = 0
     return client.responses.create(**kwargs)
 
